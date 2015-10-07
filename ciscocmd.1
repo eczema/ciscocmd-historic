@@ -84,6 +84,9 @@ Define maximum forked process. The default value is 4. You can if your machine i
 
 ex: \-m 10
 .TP 
+\fB\-w \-\-wait\fR <\fIseconds\fR>
+This option define the maximum time in seconds to wait after each command during the processing.
+.TP
 \fB\-b \-\-batchfile\fR <\fIfile\fR>                          
 This parameter let you specify a custom script that will get as standard input. The result of the ciscocmd script. Additionally, the $CISCOHOST environmental variable can be accessed by your script. CISCOHOST will give you the current target.
 
@@ -97,6 +100,9 @@ ex: \-d mydebug
 \fB\-q \-\-quiet\fR
 Be very quite and do not send any information on standard output.
 
+.TP
+\fB\-Y \-\-ssh\fR
+This option will use ssh instead of telnet protocol to connect remote target(s)
 
 
 
@@ -204,4 +210,4 @@ And replace the load libtclxXXX.so in ciscocmd
 .LP 
 Alain Degreffe <eczema@ecze.com>
 
-27 January 2005
+16 August 2005
