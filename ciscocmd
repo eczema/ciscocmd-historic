@@ -45,6 +45,8 @@ set logfile ""
 
 set maxfork 4
 
+set timeout 300
+
 #load /usr/lib/libtclx8.4.so.1
 
 # Argument processing
@@ -53,7 +55,7 @@ while {[llength $argv] > 0 } {
 	set flag [lindex $argv 0]
 	switch -re -- $flag {
 		"--help|-h"		{
-				send_user "ioscmd v1.1 written by Alain Degreffe <eczema@ecze.com>\n\n"
+				send_user "ciscocmd v1.2 written by Alain Degreffe <eczema@ecze.com>\n\n"
 				send_user "Usage: ioscmd \[OPTION\]...\n"
 				send_user "Send command(s) to cisco host.\n\n" 
 				send_user " -h --help display this help message.\n"
@@ -69,6 +71,7 @@ while {[llength $argv] > 0 } {
 				send_user " -a --append					log will be appended to existing file\n" 
 				send_user " -P --prefix					add the host prefix to each line\n"
 				send_user " -m --maxfork <number>				define maximum forked process\n"
+				send_user " -w --wait <seconds>				define max wait time for the next prompt\n"
 				send_user " -b --batchfile <file>				define a batch file to process ciscocmd output\n"
 				send_user "						All ciscocmd output will be piped to this batch\n"
 				send_user " -d --debug <file>				define a debug file name\n"
@@ -120,6 +123,10 @@ while {[llength $argv] > 0 } {
 				}
 		"--maxfork|-m"		{
 				set maxfork [lindex $argv 1]
+				set argv [lrange $argv 2 end]
+				}
+		"--wait|-w"		{
+				set timeout [lindex $argv 1]
 				set argv [lrange $argv 2 end]
 				}
 		"--batchfile|-b"	{
@@ -201,7 +208,7 @@ proc waitprompt {} {
 			if { $nl > 20 } { send "" ; set nl 0 }
                         exp_continue
 		}
-		-re "enable\\) \*$|>\*$|#\*$|assword: \*$|sername: \*$" {
+		-re "enable\\) \*$|> *\*$|#\*$|assword: \*$|sername: \*$|confirm\]\*$|\\? *\*$" {
 			if   { [ info exist logfd  ] && $logger == 1 } {
 				regsub -all -- "" $expect_out(buffer) "" add
                                 puts -nonewline $logfd  "$beg$add"
@@ -276,8 +283,9 @@ if { [ llength $hostlist ] < 2  ||  $maxfork < 2   } {
 				tclx_wait
 				set childavail [ expr $childavail + 1 ]
 			}
-			exit
+		#	exit
 		}
+		exit
 	} 
 }
 
