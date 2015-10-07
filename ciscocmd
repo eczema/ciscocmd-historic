@@ -1,6 +1,6 @@
 #!/bin/bash
 #
-# ioscmd expect script
+# ciscocmd expect script
 #
 # Written by Alain Degreffe <eczema@ecze.com>
 # 
@@ -20,7 +20,19 @@
 # Bug fix for username
 # Support for using under Cygwin
 # Support for CatOS
-
+#
+# V1.2 
+#
+# Add -w --wait sitch to define timeout
+# Fix exit in forking mechanism
+#      ( Thanks to Nicola [nicola.novello@gmail.com] )
+#
+# V1.3
+# Add ssh support
+# Add Pix support in ssh mode 
+#
+# V1.4
+# Fix uername usage with ssh
 
 # The next line store the args in memory \
 IFS='²' ; export ARGS=$@
@@ -43,6 +55,8 @@ if { $argv == "" } {
 set logger 0
 set logfile ""
 
+set proto "telnet"
+
 set maxfork 4
 
 set timeout 300
@@ -54,9 +68,9 @@ set timeout 300
 while {[llength $argv] > 0 } {
 	set flag [lindex $argv 0]
 	switch -re -- $flag {
-		"--help|-h"		{
-				send_user "ciscocmd v1.2 written by Alain Degreffe <eczema@ecze.com>\n\n"
-				send_user "Usage: ioscmd \[OPTION\]...\n"
+		"--help|^-h$"		{
+				send_user "ciscocmd v1.4 written by Alain Degreffe <eczema@ecze.com>\n\n"
+				send_user "Usage: ciscocmd \[OPTION\]...\n"
 				send_user "Send command(s) to cisco host.\n\n" 
 				send_user " -h --help display this help message.\n"
 				send_user " -u --username <username>			define the username password.\n"
@@ -74,6 +88,7 @@ while {[llength $argv] > 0 } {
 				send_user " -w --wait <seconds>				define max wait time for the next prompt\n"
 				send_user " -b --batchfile <file>				define a batch file to process ciscocmd output\n"
 				send_user "						All ciscocmd output will be piped to this batch\n"
+				send_user " -Y|--ssh					Use ssh protocol to connect remote equipement\n"
 				send_user " -d --debug <file>				define a debug file name\n"
 				send_user " -q --quiet					set program very quiet\n\n"
 				set argv [lrange $argv 1 end]
@@ -88,7 +103,7 @@ while {[llength $argv] > 0 } {
 				set password [lindex $argv 1]
 				set argv [lrange $argv 2 end]
 			     	}
-		"--secretpassword|-s"	{
+		"--secretpassword|^-s$"	{
                                 set secretpassword [lindex $argv 1]
                                 set argv [lrange $argv 2 end]
 				}
@@ -141,6 +156,10 @@ while {[llength $argv] > 0 } {
 				set quiet 1
 				set argv [lrange $argv 1 end]
 				}
+		"^--ssh$|-Y"			{
+				set proto "ssh"
+				set argv [lrange $argv 1 end]
+				}
 		"--debug|-d"		{
 				set debugfile [lindex $argv 1]
 				#exp_internal -f $debugfile 0
@@ -148,7 +167,7 @@ while {[llength $argv] > 0 } {
 				}
 		default 		{
 				send_user " \n$flag unknow argument.\n\n"
-				set argv "-h --help"
+				set argv "-h"
 				}
 	}
 }
@@ -208,7 +227,7 @@ proc waitprompt {} {
 			if { $nl > 20 } { send "" ; set nl 0 }
                         exp_continue
 		}
-		-re "enable\\) \*$|> *\*$|#\*$|assword: \*$|sername: \*$|confirm\]\*$|\\? *\*$" {
+		-re "enable\\) \*$|> *\*$|# *\*$|assword: \*$|\\$ \*$|sername: \*$|confirm\]\*$|\\? *\*$" {
 			if   { [ info exist logfd  ] && $logger == 1 } {
 				regsub -all -- "" $expect_out(buffer) "" add
                                 puts -nonewline $logfd  "$beg$add"
@@ -314,15 +333,30 @@ foreach host $hostlist {
 		send_user "Processing... $host\n"
 		log_user 0
 	}
-	spawn telnet $host
+
+	if { $proto == "ssh" } {
+		varcheck "username" 0
+		spawn $proto $username@$host
+	} else {
+		spawn $proto $host
+	}
 
 
-	expect -re  "(assword)|(sername)"
+	expect -re  "(assword)|(sername)|(yes/no)"
         if { [ catch { set loginbuf "$expect_out(1,string)" } ] } {
-               set loginbuf "$expect_out(2,string)" 
+               if { [ catch { set loginbuf "$expect_out(2,string)" } ] } {
+			set loginbuf "$expect_out(3,string)" 
+	       }
 	}
 
 	switch -- $loginbuf {
+		"yes/no"	{
+				send  "yes\n"
+				expect -re "assword"
+				global password
+				varcheck "password" 1
+				send  "$password\r"
+				}
         	"sername"          {
                 	        varcheck "username" 0
                 	        send  "$username\r"
