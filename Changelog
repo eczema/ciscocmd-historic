@@ -1,6 +1,10 @@
+# V1.6
+- Better connection failed handling
+- Better waitprompt routine
+
 # V1.5c
 - Add -f --force switch to support the "go on to next host" function
-  when connection to host fails
+   when connection to host fails
       (implemented by Martin Hagmann [nisecs@bluewin.ch])
 - Add --sshopts
 

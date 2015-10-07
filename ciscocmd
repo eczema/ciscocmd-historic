@@ -39,10 +39,13 @@
 # when connection to host fails
 #       (implemented by Martin Hagmann [nisecs@bluewin.ch])
 #
-
+# V1.6
+# Better handling when connection fail
+# Don't stop when username is not requested but provided by the user...
+# some other handling in waitprompt routine
 
 # The next line store the args in memory \
-IFS='²' ; export ARGS=$@
+IFS='µ' ; export ARGS=$@
 # the next line restarts using expect \
 exec expect  -- "$0" 
 
@@ -52,7 +55,7 @@ log_user 0
 # first: take arguments from environment variable
 
 regsub -all -- "{|}" [lrange [array get env ARGS] 1 end] "" argv
-regsub -all -- "²" $argv "\" \"" argv
+regsub -all -- "µ" $argv "\" \"" argv
 regsub -all -- "^|$" $argv "\"" argv
 
 if { $argv == "" } {
@@ -65,10 +68,12 @@ set logfile ""
 set proto "telnet"
 
 set sshopts "-q"
-	
+
 set maxfork 4
 
 set timeout 300
+
+set macro 0
 
 #load /usr/lib/libtclx8.4.so.1
 
@@ -78,7 +83,7 @@ while {[llength $argv] > 0 } {
 	set flag [lindex $argv 0]
 	switch -re -- $flag {
 		"--help|^-h$"		{
-				send_user "ciscocmd v1.5 written by Alain Degreffe <eczema@ecze.com>\n\n"
+				send_user "ciscocmd v1.4 written by Alain Degreffe <eczema@ecze.com>\n\n"
 				send_user "Usage: ciscocmd \[OPTION\]...\n"
 				send_user "Send command(s) to cisco host.\n\n" 
 				send_user " -h --help display this help message.\n"
@@ -98,8 +103,8 @@ while {[llength $argv] > 0 } {
 				send_user " -b --batchfile <file>				define a batch file to process ciscocmd output\n"
 				send_user "						All ciscocmd output will be piped to this batch\n"
 				send_user " -Y|--ssh					Use ssh protocol to connect remote equipement\n"
-				send_user " --sshopts					set ssh specific option\n"
-				send_user " -f --force					force connection to next host if one connection fails\n"
+                                send_user " --sshopts                                   set ssh specific option\n"
+                                send_user " -f --force                                  force connection to next host if one connection fails\n"
 				send_user " -d --debug <file>				define a debug file name\n"
 				send_user " -q --quiet					set program very quiet\n\n"
 				set argv [lrange $argv 1 end]
@@ -171,14 +176,15 @@ while {[llength $argv] > 0 } {
 				set proto "ssh"
 				set argv [lrange $argv 1 end]
 				}
-		"^--sshopts"		{
-				set sshopts [lindex $argv 1]
-				set argv [lrange $argv 2 end]
-				}
-		"--force|-f"		{
-				set forcenext 1
-				set argv [lrange $argv 1 end]
-				}
+                "^--sshopts"            {
+                                set sshopts [lindex $argv 1]
+                                set argv [lrange $argv 2 end]
+                                }
+                "--force|-f"            {
+                                set forcenext 1
+                                set argv [lrange $argv 1 end]
+                                }
+
 		"--debug|-d"		{
 				set debugfile [lindex $argv 1]
 				#exp_internal -f $debugfile 0
@@ -191,11 +197,12 @@ while {[llength $argv] > 0 } {
 	}
 }
 
+
 # Not needed anymore under new expect linked with tcl 8.4
 if { ![ regexp {CYGWIN} [array get tcl_platform os]  ] } {
       if { [catch {load /usr/lib/libtclx8.3.so.1} ] } {
               if { [catch {load /usr/lib/libtclx8.4.so.1} ] } {
-                      	 set maxfork 0
+                      	set maxfork 0
               }
       }
 }
@@ -234,31 +241,68 @@ proc waitprompt {} {
         global host
         global logger
         global prefix
+	global macro
 	set nl 0
 	if { [ info exist prefix ] } { set beg "$host:" } else { set beg "" }
-	expect {
-		-re "\n" {
-                        if   { [ info exist logfd  ] && $logger == 1 }  {
-				regsub -all -- "" $expect_out(buffer) "" add
-                                puts -nonewline $logfd  "$beg$add"
-                        }
-			set nl [ expr $nl + 1 ]
-			if { $nl > 20 } { send "" ; set nl 0 }
-                        exp_continue
+	if { $macro == 1 } {
+		expect {
+			-re "\n" {
+				set macro 1	
+			}
+			-re "@\n" {
+				set macro 0
+			}
 		}
-		-re "enable\\) \*$|> *\*$|# *\*$|assword: \*$|\\$ \*$|sername: \*$|confirm\]\*$|\\? *\*$" {
-			if   { [ info exist logfd  ] && $logger == 1 } {
-				regsub -all -- "" $expect_out(buffer) "" add
-                                puts -nonewline $logfd  "$beg$add"
-                        }
+	} else {
+		expect {
+			-re "'@'\.\r\n" {
+				set macro 1
+				if   { [ info exist logfd  ] && $logger == 1 } {
+					regsub -all -- "^G" $expect_out(buffer) "" add
+					puts -nonewline $logfd  "$beg$add"
+				}
+			}
+			-re "\n" {
+                       		if   { [ info exist logfd  ] && $logger == 1 }  {
+					regsub -all -- "" $expect_out(buffer) "" add
+                               		puts -nonewline $logfd  "$beg$add"
+                        	}
+				set nl [ expr $nl + 1 ]
+				if { $nl > 20 } { send "" ; set nl 0 }
+                        	exp_continue
+			}
+			-re "enable\\) \*$|> *\*$|admin:\\**\*$|assword: \*$|\\$ \*$|sername: \*$|confirm\]\*$|y/n\] :\*$|\\? *\*$" {
+				if   { [ info exist logfd  ] && $logger == 1 } {
+					regsub -all -- "" $expect_out(buffer) "" add
+                               		puts -nonewline $logfd  "$beg$add"
+                        	}
+				return 2
+			}
+		 	-re "# *\*$" {
+				if   { [ info exist logfd  ] && $logger == 1 } {
+					regsub -all -- "" $expect_out(buffer) "" add
+					puts -nonewline $logfd  "$beg$add"
+				}
+				return 0
+			}
 		}
-		
 	}
  
 
 }
 
 ## Now multitasking if more than one host
+
+
+if { $proto == "ssh" } {
+                varcheck "username" 0
+		}
+varcheck "password" 1
+
+if { [ info exist enable ] } {
+		varcheck "secretpassword" 1
+		}
+
 
 # Construct a list
 
@@ -355,42 +399,26 @@ foreach host $hostlist {
 
 	if { $proto == "ssh" } {
 		varcheck "username" 0
-		log_user 1
-		send_user "$proto $sshopts $username@$host"
-		log_user 0
-		spawn $proto $sshopts $username@$host
+		if [ catch { spawn $proto $sshopts $username@$host } ] {send_user "$host failed to connect\n"} 
 	} else {
-		spawn $proto  $host
+		if [ catch { spawn $proto $host } ] {send_user "$host failed to connect\n"}
 	}
 
 
-	#expect -re  "(assword)|(sername)|(yes/no)"
-        #if { [ catch { set loginbuf "$expect_out(1,string)" } ] } {
+	expect -re  "(assword)|(sername)|(yes/no)"
+        if { [ catch { set loginbuf "$expect_out(0,string)" } ] } {
         #       if { [ catch { set loginbuf "$expect_out(2,string)" } ] } {
 	#		set loginbuf "$expect_out(3,string)" 
 	#       }
-	#}
-        expect {
-		-re  "(assword)|(sername)|(yes/no)" {
-			if { [ catch { set loginbuf "$expect_out(1,string)" } ] } {
-				if { [ catch { set loginbuf "$expect_out(2,string)" } ] } {
-					set loginbuf "$expect_out(3,string)"
-				}
-			}
-		}
-		default {
-			if { ![info exist quiet] } {
-				log_user 1
-				send_user "Connection/Login to $host failed!\n"
-				log_user 0
-			}
-			if { [info exist forcenext] } {
-				# force next host
-				continue
-			} else {
-			exit
-			}
-		}
+	#set loginbuf $expect_out(0,string)
+	send_user "$host failed to connect\n"
+	if { [info exist forcenext] } {
+		# force next host
+		continue
+        } else {
+		exit
+	}
+			
 	}
 
 	switch -- $loginbuf {
@@ -401,15 +429,14 @@ foreach host $hostlist {
 				varcheck "password" 1
 				send  "$password\r"
 				}
-        	"sername"	{
+        	"sername"          {
                 	        varcheck "username" 0
                 	        send  "$username\r"
-                	        expect -re "assword" {
-                	        		global password
-                	        		varcheck "password" 1
-                	        		send  "$password\r"
-                	        	}
-				}
+                	        expect -re "assword"
+                	        global password
+                	        varcheck "password" 1
+                	        send  "$password\r"
+                	        }
        		"assword"       {
                 	        varcheck "password" 1
                         	send  "$password\r"
@@ -419,18 +446,28 @@ foreach host $hostlist {
                         	}
 	}
 
-	waitprompt
+	set ret [ waitprompt ]
 
 
-	if { [info exist secretpassword] || [info exist enable] } {
+	if { $ret == 2 && ( [info exist secretpassword] || [info exist enable] ) } {
 		varcheck "secretpassword" 1
 		send  "en\r"
-		expect -re assword
-		send  "$secretpassword\r"
+	expect -re "(assword)|(#)" 	
+	set loginbuf2 "$expect_out(0,string)"
+		switch -- $loginbuf2 {
+			"#" {
+				send "\n"
+				}
+			"assword" {
+				send  "$secretpassword\r"
+				}
+		}
+	#	expect -re "assword"
+	#	send  "$secretpassword\r"
 		waitprompt
 	}
 
-	send  "term len 0\n"
+	if [ catch { send  "term len 0\n" } ] {send_user "$host failed to connect\n" ; exit }  
 	waitprompt
 
 
@@ -468,10 +505,10 @@ foreach host $hostlist {
 		}
 	} else {
 		varcheck command 0
-		if [ catch { send "\n" } ] { continue }
-		if [ catch { waitprompt } ] { continue }
-		if [ catch { send "$command\n" } ]  { continue }
-		if [ catch { waitprompt } ] { continue }
+                if [ catch { send "\n" } ] { continue }
+                if [ catch { waitprompt } ] { continue }
+                if [ catch { send "$command\n" } ]  { continue }
+                if [ catch { waitprompt } ] { continue }
 	}
 	
 	send "exit\n"	
