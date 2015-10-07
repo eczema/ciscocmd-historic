@@ -1,3 +1,6 @@
+# V1.7
+-Hugly hack for cygwin defunc
+
 # V1.6
 - Better connection failed handling
 - Better waitprompt routine
