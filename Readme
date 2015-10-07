@@ -19,7 +19,7 @@ ciscoscmd [OPTION]...
  -t --target <host>				define the hostname to connect.
  -T --targetfile <file>				define a target file (one host per line)
  -c --cmd <cmd>					define the command to send.
- -C --cachecred                                 use cache credentials $CISCOUSR $CISCOPW $CISCOSEC
+ -C --cachecred					use cache credentials $CISCOUSR $CISCOPW $CISCOSEC 
  -e --enable					set mode enable.
  -r --runfile <file>				define a file with a set of command to send.
  -l --log <file prefix>				define a logfile prefix
@@ -33,6 +33,10 @@ ciscoscmd [OPTION]...
  --sshopts					set ssh specific option
  -f --force					force connection to next host if one connection fails
  -d --debug <file>				define a debug file name
+ -A --asa					use ASA pager command: terminal pager 0
+ -W --wlc					use WLC pager command: config paging disable
+ -D --datadump					use Small Business pager command: terminal datadump 0
+ -z --width <chars>				set terminal width (not for ASA)
  -q --quiet					set program very quiet
 
 
@@ -58,8 +62,7 @@ ciscoscmd [OPTION]...
 -c --cmd		With this flag, you can pass the ios command to execute. Don't forget to use quote !!!
 			ex: -c "show version"
 
--C --cachecred
-			This flag will use environment variables CISCOUSR as user, CISCOPW as password and CISCOCEC as secret.
+-C --cachecred		This flag will use environment variables CISCOUSR as user, CISCOPW as password and CISCOCEC as secret.
 
 -e --enable		This flag turn enable mode on. If you use -s, this parameter is useless.
 
@@ -83,6 +86,8 @@ ciscoscmd [OPTION]...
 			the result of the ciscocmd script. Additionally, the $CISCOHOST environmental 
 			variable can be accessed by your script. CISCOHOST will give you the current target.
 
+-z --width		This will force the width to the specified value. Default value: 80.
+
 -d --debug		This option will produce a expect debug output in a file. If more than one target is
 			given, each target will produce a file <debugfilename>.target.debug
 			ex: -d mydebug
@@ -90,7 +95,11 @@ ciscoscmd [OPTION]...
 -w --wait		This option define the maximum time in seconds to wait after each command during processing.
 
 -q --quiet		Be very quite and do not send any information on standard output.
-  
+
+-A --asa		Use this option to use ASA's pager command: "terminal pager 0" instead of "terminal length 0".
+
+-W --wlc		Use this option to use WLC's pager command: "config paging disable" instead of "terminal length 0".
+
 -Y --ssh		This option will use ssh instead of telnet protocol to connect remote target(s)
 
 --sshopts <sshopts>	This option permit to add specific ssh options 
@@ -148,7 +157,7 @@ Remarks:
 
 Important !!!!!
 
-To use forking mechanism , you need tclx extension. So adjust ciscocmd script according your system.
+To use forking mechanism on Unix , you need tclx extension. So adjust ciscocmd script according your system.
 try :
 
 find /usr/lib -name "libtclx*" 

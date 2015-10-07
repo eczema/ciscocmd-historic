@@ -1,4 +1,4 @@
-.TH "ciscocmd" "1" "1.8" "Alain Degreffe" "Cisco expect Tool script"
+.TH "ciscocmd" "1" "1.10" "Alain Degreffe" "Cisco expect Tool script"
 .SH "NAME"
 .LP 
 ciscocmd cisco command processing and reporting tool
@@ -95,6 +95,9 @@ This parameter let you specify a custom script that will get as standard input. 
 
 ex: \-b "myscript.sh"
 .TP 
+\fB\-z \-\-width\fR <\fIchars\fR>
+This will force the width to the specified value. Default value: 80.
+.TP 
 \fB\-d \-\-debug\fR <\fIfile\fR>
 This option will produce a expect debug output in a file. If more than one target is given, each target will produce a file <\fIdebugfilename\fR>.ta rget.dbg
 
@@ -102,6 +105,14 @@ ex: \-d mydebug
 .TP 
 \fB\-q \-\-quiet\fR
 Be very quite and do not send any information on standard output.
+
+.TP 
+\fB\-A \-\-asa\fR
+Use this option to use ASA's pager command: "terminal pager 0" instead of "terminal length 0".
+
+.TP 
+\fB\-W \-\-wlc\fR
+Use this option to use WLC's pager command: "config paging disable" instead of "terminal length 0".
 
 .TP 
 \fB\-Y \-\-ssh\fR
@@ -117,6 +128,10 @@ ex: \-\-sshopts "\-2"
 \fB\-f \-\-forcenext\fR
 This option force connection to next host if one connection fails
 
+
+
+.SH "RETURN CODE"
+If login was invalid it returns 1. In any other case (including success) it returns 0.
 
 
 .SH "EXAMPLES"
@@ -190,7 +205,6 @@ while read line
 		\-c "sh run int $IF"
           fi
      )
-.br
 done
 
 \-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-
@@ -205,7 +219,6 @@ you will have a hundred of text file ( one per node with the result of "sh run i
 Remarks:
 
 1. This example supposes you don't use authentication new model. If you use it do not forget to use \-u <username> with ciscocmd
-.br
 2. Another way to do the same thing is to use "include" command from ios and make a shorter mybatch script.
 
 

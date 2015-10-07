@@ -43,6 +43,18 @@
 # Better handling when connection fail
 # Don't stop when username is not requested but provided by the user...
 # some other handling in waitprompt routine
+#
+# [ Next-version ]
+# Implemented by Octavio Alvarez [alvarezp@alvarezp.ods.org])
+# -- Added support for PIX/ASA terminal pager.
+# -- Disconnect and return with an error code if login is invalid.
+# -- Forced terminal width to 80 and added an override option.
+# -- If the line with the # sign has spaces, it is not a prompt.
+# -- Allow devices which only ask for "User" as opposed to "Username".
+# -- Changed sent end-of-lines to r.
+# -- Added support for WLC terminal pager.
+# -- Added support for empty prompts for "banner login" support.
+# -- Added support for Small Business "terminal datadump".
 
 # V1.7
 # Hugly hack for cygwin ( defunc ) 
@@ -50,8 +62,13 @@
 # V1.8
 # New option to use ENV VARS to set user password and secret
 
+
 # V1.9
-# Fix defunc state for forked process under Cygwin
+# New option to use ENV VARS to set user password and secret
+
+
+# V1.10-beta
+# Merge code from Octavio Alvarez
 
 # The next line store the args in memory \
 IFS='µ' ; export ARGS=$@
@@ -73,6 +90,9 @@ if { $argv == "" || $argv == "\""} {
 
 set logger 0
 set logfile ""
+set termlen "term len 0"
+set termwidth "term width "
+set width 80
 
 set proto "telnet"
 
@@ -83,22 +103,22 @@ set maxfork 4
 set timeout 300
 
 set macro 0
+set continuousprompt "0"
 
 #load /usr/lib/libtclx8.4.so.1
-
-# Argument processing
 
 # Trap for Cygwin 
 
 if { [ regexp {CYGWIN} [array get tcl_platform os]  ] } {
-	trap SIG_IGN SIGCHLD
-} 
+        trap SIG_IGN SIGCHLD
+}
+# Argument processing
 
 while {[llength $argv] > 0 } {
 	set flag [lindex $argv 0]
 	switch -re -- $flag {
 		"--help|^-h$"		{
-				send_user "ciscocmd v1.9 written by Alain Degreffe <eczema@ecze.com>\n\n"
+				send_user "ciscocmd v1.10 written by Alain Degreffe <eczema@ecze.com>\n\n"
 				send_user "Usage: ciscocmd \[OPTION\]...\n"
 				send_user "Send command(s) to cisco host.\n\n" 
 				send_user " -h --help display this help message.\n"
@@ -122,6 +142,10 @@ while {[llength $argv] > 0 } {
                                 send_user " --sshopts					set ssh specific option\n"
                                 send_user " -f --force					force connection to next host if one connection fails\n"
 				send_user " -d --debug <file>				define a debug file name\n"
+				send_user " -A --asa					use ASA pager command: terminal pager 0\n"
+				send_user " -W --wlc					use WLC pager command: config paging disable\n"
+				send_user " -D --datadump					use Small Business pager command: terminal datadump 0\n"
+				send_user " -z --width <chars>				set terminal width (not for ASA or WLC)\n"
 				send_user " -q --quiet					set program very quiet\n\n"
 				set argv [lrange $argv 1 end]
 				exit
@@ -151,7 +175,7 @@ while {[llength $argv] > 0 } {
                                 set command [lindex $argv 1]
                                 set argv [lrange $argv 2 end]
 				}
-		"--cachecred|-C"
+		"--cachecred|-C"	
 					{
 				catch { set username $::env(CISCOUSR) }
 				catch { set password $::env(CISCOPW) }
@@ -208,6 +232,25 @@ while {[llength $argv] > 0 } {
                                 set argv [lrange $argv 1 end]
                                 }
 
+		"^--asa$|-A"			{
+				set termlen "terminal pager 0"
+				set termwidth ""
+				set argv [lrange $argv 1 end]
+				}
+		"^--wlc$|-W"			{
+				set termlen "config paging disable"
+				set termwidth ""
+				set argv [lrange $argv 1 end]
+				}
+		"^--datadump$|^-D$"			{
+				set termlen "terminal datadump"
+				set termwidth ""
+				set argv [lrange $argv 1 end]
+				}
+		"^--width$|-z"			{
+				set width [lindex $argv 1]
+				set argv [lrange $argv 2 end]
+				}
 		"--debug|-d"		{
 				set debugfile [lindex $argv 1]
 				#exp_internal -f $debugfile 0
@@ -264,6 +307,7 @@ proc waitprompt {} {
         global host
         global logger
         global prefix
+	global continuousprompt
 	global macro
 	set nl 0
 	if { [ info exist prefix ] } { set beg "$host:" } else { set beg "" }
@@ -285,6 +329,13 @@ proc waitprompt {} {
 					puts -nonewline $logfd  "$beg$add"
 				}
 			}
+			-re "% Login invalid" {
+				disconnect
+				exit 1
+			}
+			-re "Enter TEXT message." {
+				set continuousprompt "1"
+			}
 			-re "\n" {
                        		if   { [ info exist logfd  ] && $logger == 1 }  {
 					regsub -all -- "" $expect_out(buffer) "" add
@@ -292,16 +343,18 @@ proc waitprompt {} {
                         	}
 				set nl [ expr $nl + 1 ]
 				if { $nl > 20 } { send "" ; set nl 0 }
-                        	exp_continue
+				if { $continuousprompt == "0" } { exp_continue }
 			}
-			-re "enable\\) \*$|> *\*$|admin:\\**\*$|assword: \*$|\\$ \*$|sername: \*$|confirm\]\*$|y/n\] :\*$|\\? *\*$" {
+			-re "enable\\) \*$|> *\*$|admin:\\**\*$|assword: \*$|\\$ \*$|ser(name)?: \*$|confirm\]\*$|y/n\] :\*$|\\? *\*$" {
+				set continuousprompt "0"
 				if   { [ info exist logfd  ] && $logger == 1 } {
 					regsub -all -- "" $expect_out(buffer) "" add
                                		puts -nonewline $logfd  "$beg$add"
                         	}
 				return 2
 			}
-		 	-re "# *\*$" {
+		 	-re "^\[^ \]+# *\*$" {
+				set continuousprompt "0"
 				if   { [ info exist logfd  ] && $logger == 1 } {
 					regsub -all -- "" $expect_out(buffer) "" add
 					puts -nonewline $logfd  "$beg$add"
@@ -428,7 +481,7 @@ foreach host $hostlist {
 	}
 
 
-	expect -re  "(assword)|(sername)|(yes/no)"
+	expect -re  "(assword)|(ser(name)?)|(yes/no)"
         if { [ catch { set loginbuf "$expect_out(0,string)" } ] } {
         #       if { [ catch { set loginbuf "$expect_out(2,string)" } ] } {
 	#		set loginbuf "$expect_out(3,string)" 
@@ -446,13 +499,13 @@ foreach host $hostlist {
 
 	switch -- $loginbuf {
 		"yes/no"	{
-				send  "yes\n"
+				send  "yes\r"
 				expect -re "assword"
 				global password
 				varcheck "password" 1
 				send  "$password\r"
 				}
-        	"sername"          {
+        	"ser"	{
                 	        varcheck "username" 0
                 	        send  "$username\r"
                 	        expect -re "assword"
@@ -490,8 +543,12 @@ foreach host $hostlist {
 		waitprompt
 	}
 
-	if [ catch { send  "term len 0\n" } ] {send_user "$host failed to connect\n" ; exit }  
+	if [ catch { send  "$termlen\r" } ] {send_user "$host failed to connect\n" ; exit }  
 	waitprompt
+	if { $termwidth != "" } {
+		send "$termwidth $width\r"
+		waitprompt
+	}
 
 
 	##########################################	
@@ -517,24 +574,26 @@ foreach host $hostlist {
 
 	#learnprompt
 
+	set continuousprompt "0"
+
 	if { [ info exist cmdfile ] } {
-		send "\n"
+		send "\r"
 		waitprompt
 		set cmdlist [open $cmdfile "r" ]
 		while {[eof $cmdlist] == 0} {
 			set command [gets $cmdlist]
-			send "$command\n"
+			send "$command\r"
 			waitprompt
 		}
 	} else {
 		varcheck command 0
-                if [ catch { send "\n" } ] { continue }
+                if [ catch { send "\r" } ] { continue }
                 if [ catch { waitprompt } ] { continue }
-                if [ catch { send "$command\n" } ]  { continue }
+                if [ catch { send "$command\r" } ]  { continue }
                 if [ catch { waitprompt } ] { continue }
 	}
 	
-	send "exit\n"	
+	send "exit\r"	
 	close
 	##########################################
 
