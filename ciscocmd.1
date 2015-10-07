@@ -1,4 +1,4 @@
-.TH "ciscocmd" "1" "0.1" "" "Cisco expect Tool script"
+.TH "ciscocmd" "1" "1.5" "Alain Degreffe" "Cisco expect Tool script"
 .SH "NAME"
 .LP 
 ciscocmd cisco command processing and reporting tool
@@ -86,25 +86,33 @@ ex: \-m 10
 .TP 
 \fB\-w \-\-wait\fR <\fIseconds\fR>
 This option define the maximum time in seconds to wait after each command during the processing.
-.TP
+.TP 
 \fB\-b \-\-batchfile\fR <\fIfile\fR>                          
 This parameter let you specify a custom script that will get as standard input. The result of the ciscocmd script. Additionally, the $CISCOHOST environmental variable can be accessed by your script. CISCOHOST will give you the current target.
 
 ex: \-b "myscript.sh"
 .TP 
 \fB\-d \-\-debug\fR <\fIfile\fR>
-This option will produce a expect debug output in a file. If more than one target is given, each target will produce a file <\fIdebugfilename\fR>.target.dbg
+This option will produce a expect debug output in a file. If more than one target is given, each target will produce a file <\fIdebugfilename\fR>.ta rget.dbg
 
 ex: \-d mydebug
 .TP 
 \fB\-q \-\-quiet\fR
 Be very quite and do not send any information on standard output.
 
-.TP
+.TP 
 \fB\-Y \-\-ssh\fR
 This option will use ssh instead of telnet protocol to connect remote target(s)
 
+.TP 
+\fB\-\-sshopts\fR <\fIsshopts\fR>
+This option permit to add specific ssh options
 
+ex: \-\-sshopts "\-2"
+
+.TP 
+\fB\-f \-\-forcenext\fR
+This option force connection to next host if one connection fails
 
 
 
@@ -152,13 +160,13 @@ Suppose you need to check the configuration of all interfaces where you detect m
 
 
 \-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-mybatch\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-
-.br
+.br 
 #!/bin/sh
-.br
+.br 
 #
-.br
+.br 
 #mybatch
-.br
+.br 
 
 while read line
   do echo "$line" | grep \-q "line protocol" \\

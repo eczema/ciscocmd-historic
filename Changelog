@@ -1,6 +1,12 @@
+# V1.5c
+- Add -f --force switch to support the "go on to next host" function
+  when connection to host fails
+      (implemented by Martin Hagmann [nisecs@bluewin.ch])
+- Add --sshopts
+
 # Version 1.4
 
--Fix ssh username usage
+- Fix ssh username usage
 
 # Version 1.3
 

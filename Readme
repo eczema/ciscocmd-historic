@@ -13,22 +13,26 @@ Usage:
 ciscoscmd [OPTION]...
 
  -h --help display this help message.
- -u --username <username>                       define the username password.
- -p --password <password>                       define the telnet password.
- -s --secretpassword <enable password>          define the enable secret password.
- -t --target <host>                             define the hostname to connect.
- -T --targetfile <file>                         define a target file (one host per line)
- -c --cmd <cmd>                                 define de command to send.
- -e --enable                                    set mode enable.
- -r --runfile <file>                            define a file with a set of command to send.
- -l --log <file prefix>                         define a logfile prefix
- -a --append                                    log will be appended to existing file
- -P --prefix                                    add the host prefix to each line
- -m --maxfork <number>                          define maximum forked process
- -b --batchfile <file>                          define a batch file to process ciscocmd output
-                                                All ciscocmd output will be piped to this batch
- -d --debug <file>                              define a debug file
- -q --quiet                                     set program very quiet
+ -u --username <username>			define the username password.
+ -p --password <password>		 	define the telnet password.
+ -s --secretpassword <enable password>		define the enable secret password.
+ -t --target <host>				define the hostname to connect.
+ -T --targetfile <file>				define a target file (one host per line)
+ -c --cmd <cmd>					define the command to send.
+ -e --enable					set mode enable.
+ -r --runfile <file>				define a file with a set of command to send.
+ -l --log <file prefix>				define a logfile prefix
+ -a --append					log will be appended to existing file
+ -P --prefix					add the host prefix to each line
+ -m --maxfork <number>				define maximum forked process
+ -w --wait <seconds>				define max wait time for the next prompt
+ -b --batchfile <file>				define a batch file to process ciscocmd output
+						All ciscocmd output will be piped to this batch
+ -Y|--ssh					Use ssh protocol to connect remote equipement
+ --sshopts					set ssh specific option
+ -f --force					force connection to next host if one connection fails
+ -d --debug <file>				define a debug file name
+ -q --quiet					set program very quiet
 
 
 
@@ -83,6 +87,12 @@ ciscoscmd [OPTION]...
 
 -q --quiet		Be very quite and do not send any information on standard output.
   
+-Y --ssh		This option will use ssh instead of telnet protocol to connect remote target(s)
+
+--sshopts <sshopts>	This option permit to add specific ssh options 
+			ex: --sshopts "-2"
+
+-f --forcenext		This option force connection to next host if one connection fails
 
 
 

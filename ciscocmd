@@ -33,6 +33,13 @@
 #
 # V1.4
 # Fix uername usage with ssh
+#
+# V1.5c
+# Add -f --force switch to support the "go on to next host" function 
+# when connection to host fails
+#       (implemented by Martin Hagmann [nisecs@bluewin.ch])
+#
+
 
 # The next line store the args in memory \
 IFS='²' ; export ARGS=$@
@@ -57,6 +64,8 @@ set logfile ""
 
 set proto "telnet"
 
+set sshopts "-q"
+	
 set maxfork 4
 
 set timeout 300
@@ -69,7 +78,7 @@ while {[llength $argv] > 0 } {
 	set flag [lindex $argv 0]
 	switch -re -- $flag {
 		"--help|^-h$"		{
-				send_user "ciscocmd v1.4 written by Alain Degreffe <eczema@ecze.com>\n\n"
+				send_user "ciscocmd v1.5 written by Alain Degreffe <eczema@ecze.com>\n\n"
 				send_user "Usage: ciscocmd \[OPTION\]...\n"
 				send_user "Send command(s) to cisco host.\n\n" 
 				send_user " -h --help display this help message.\n"
@@ -78,7 +87,7 @@ while {[llength $argv] > 0 } {
 				send_user " -s --secretpassword <enable password>		define the enable secret password.\n"
 				send_user " -t --target <host>				define the hostname to connect.\n"
 				send_user " -T --targetfile <file>				define a target file (one host per line)\n"
-				send_user " -c --cmd <cmd>					define de command to send.\n"
+				send_user " -c --cmd <cmd>					define the command to send.\n"
 				send_user " -e --enable					set mode enable.\n"
 				send_user " -r --runfile <file>				define a file with a set of command to send.\n"
 				send_user " -l --log <file prefix>				define a logfile prefix\n"
@@ -89,6 +98,8 @@ while {[llength $argv] > 0 } {
 				send_user " -b --batchfile <file>				define a batch file to process ciscocmd output\n"
 				send_user "						All ciscocmd output will be piped to this batch\n"
 				send_user " -Y|--ssh					Use ssh protocol to connect remote equipement\n"
+				send_user " --sshopts					set ssh specific option\n"
+				send_user " -f --force					force connection to next host if one connection fails\n"
 				send_user " -d --debug <file>				define a debug file name\n"
 				send_user " -q --quiet					set program very quiet\n\n"
 				set argv [lrange $argv 1 end]
@@ -160,6 +171,14 @@ while {[llength $argv] > 0 } {
 				set proto "ssh"
 				set argv [lrange $argv 1 end]
 				}
+		"^--sshopts"		{
+				set sshopts [lindex $argv 1]
+				set argv [lrange $argv 2 end]
+				}
+		"--force|-f"		{
+				set forcenext 1
+				set argv [lrange $argv 1 end]
+				}
 		"--debug|-d"		{
 				set debugfile [lindex $argv 1]
 				#exp_internal -f $debugfile 0
@@ -176,7 +195,7 @@ while {[llength $argv] > 0 } {
 if { ![ regexp {CYGWIN} [array get tcl_platform os]  ] } {
       if { [catch {load /usr/lib/libtclx8.3.so.1} ] } {
               if { [catch {load /usr/lib/libtclx8.4.so.1} ] } {
-                      	set maxfork 0
+                      	 set maxfork 0
               }
       }
 }
@@ -336,17 +355,42 @@ foreach host $hostlist {
 
 	if { $proto == "ssh" } {
 		varcheck "username" 0
-		spawn $proto $username@$host
+		log_user 1
+		send_user "$proto $sshopts $username@$host"
+		log_user 0
+		spawn $proto $sshopts $username@$host
 	} else {
-		spawn $proto $host
+		spawn $proto  $host
 	}
 
 
-	expect -re  "(assword)|(sername)|(yes/no)"
-        if { [ catch { set loginbuf "$expect_out(1,string)" } ] } {
-               if { [ catch { set loginbuf "$expect_out(2,string)" } ] } {
-			set loginbuf "$expect_out(3,string)" 
-	       }
+	#expect -re  "(assword)|(sername)|(yes/no)"
+        #if { [ catch { set loginbuf "$expect_out(1,string)" } ] } {
+        #       if { [ catch { set loginbuf "$expect_out(2,string)" } ] } {
+	#		set loginbuf "$expect_out(3,string)" 
+	#       }
+	#}
+        expect {
+		-re  "(assword)|(sername)|(yes/no)" {
+			if { [ catch { set loginbuf "$expect_out(1,string)" } ] } {
+				if { [ catch { set loginbuf "$expect_out(2,string)" } ] } {
+					set loginbuf "$expect_out(3,string)"
+				}
+			}
+		}
+		default {
+			if { ![info exist quiet] } {
+				log_user 1
+				send_user "Connection/Login to $host failed!\n"
+				log_user 0
+			}
+			if { [info exist forcenext] } {
+				# force next host
+				continue
+			} else {
+			exit
+			}
+		}
 	}
 
 	switch -- $loginbuf {
@@ -357,14 +401,15 @@ foreach host $hostlist {
 				varcheck "password" 1
 				send  "$password\r"
 				}
-        	"sername"          {
+        	"sername"	{
                 	        varcheck "username" 0
                 	        send  "$username\r"
-                	        expect -re "assword"
-                	        global password
-                	        varcheck "password" 1
-                	        send  "$password\r"
-                	        }
+                	        expect -re "assword" {
+                	        		global password
+                	        		varcheck "password" 1
+                	        		send  "$password\r"
+                	        	}
+				}
        		"assword"       {
                 	        varcheck "password" 1
                         	send  "$password\r"
@@ -423,10 +468,10 @@ foreach host $hostlist {
 		}
 	} else {
 		varcheck command 0
-		send "\n"
-		waitprompt
-		send "$command\n"
-		waitprompt
+		if [ catch { send "\n" } ] { continue }
+		if [ catch { waitprompt } ] { continue }
+		if [ catch { send "$command\n" } ]  { continue }
+		if [ catch { waitprompt } ] { continue }
 	}
 	
 	send "exit\n"	
