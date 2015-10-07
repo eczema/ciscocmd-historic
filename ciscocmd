@@ -50,6 +50,9 @@
 # V1.8
 # New option to use ENV VARS to set user password and secret
 
+# V1.9
+# Fix defunc state for forked process under Cygwin
+
 # The next line store the args in memory \
 IFS='µ' ; export ARGS=$@
 # the next line restarts using expect \
@@ -85,11 +88,17 @@ set macro 0
 
 # Argument processing
 
+# Trap for Cygwin 
+
+if { [ regexp {CYGWIN} [array get tcl_platform os]  ] } {
+	trap SIG_IGN SIGCHLD
+} 
+
 while {[llength $argv] > 0 } {
 	set flag [lindex $argv 0]
 	switch -re -- $flag {
 		"--help|^-h$"		{
-				send_user "ciscocmd v1.8 written by Alain Degreffe <eczema@ecze.com>\n\n"
+				send_user "ciscocmd v1.9 written by Alain Degreffe <eczema@ecze.com>\n\n"
 				send_user "Usage: ciscocmd \[OPTION\]...\n"
 				send_user "Send command(s) to cisco host.\n\n" 
 				send_user " -h --help display this help message.\n"

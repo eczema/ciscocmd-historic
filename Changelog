@@ -1,3 +1,6 @@
+# 1.9
+-Fix defunc state under cygwin
+
 # V1.8
 - Fix empty argument list bug
 - Add -C option for env vars using. 
