@@ -31,6 +31,7 @@ ciscoscmd [OPTION]...
 						All ciscocmd output will be piped to this batch
  -Y|--ssh					Use ssh protocol to connect remote equipement
  --sshopts					set ssh specific option
+ -I --ignrorekey				ignore host key for ssh protocol
  -f --force					force connection to next host if one connection fails
  -d --debug <file>				define a debug file name
  -A --asa					use ASA pager command: terminal pager 0
@@ -105,6 +106,8 @@ ciscoscmd [OPTION]...
 --sshopts <sshopts>	This option permit to add specific ssh options 
 			ex: --sshopts "-2"
 
+-I --ignorekey		This command wil add ssh opion to ignore host key
+
 -f --forcenext		This option force connection to next host if one connection fails
 
 
@@ -157,13 +160,9 @@ Remarks:
 
 Important !!!!!
 
-To use forking mechanism on Unix , you need tclx extension. So adjust ciscocmd script according your system.
-try :
+To use forking mechanism on Unix , you need tclx extension.
 
-find /usr/lib -name "libtclx*" 
-
-And replace the load libtclxXXX.so in ciscocmd
-
+ciscocmd will try to load Tclx extension automatically
 
 Final Word:
 -----------
