@@ -1,3 +1,8 @@
+# Version 1.2
+
+- Add -w --wait sitch to define timeout
+- Fix exit in forking mechanism
+	( Thanks to Nicola [nicola.novello@gmail.com] )
 # Version 1.1
 
 

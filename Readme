@@ -79,6 +79,8 @@ ciscoscmd [OPTION]...
 			given, each target will produce a file <debugfilename>.target.debug
 			ex: -d mydebug
 
+-w --wait		This option define the maximum time in seconds to wait after each command during processing.
+
 -q --quiet		Be very quite and do not send any information on standard output.
   
 
