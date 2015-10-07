@@ -1,0 +1,12 @@
+# Version 1.1
+
+
+- Added support for cygwin
+- Fix login with username
+- Add Catalyst support
+
+
+
+# Version 1.O
+
+Initial release

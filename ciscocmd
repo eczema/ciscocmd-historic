@@ -1,4 +1,4 @@
-#!/bin/sh
+#!/bin/bash
 #
 # ioscmd expect script
 #
@@ -9,6 +9,17 @@
 # You can make a lot of thinks like pipe to your custom script...
 #
 # For security reasons this script hide parameters from "ps axw"
+#
+#
+# Changelog
+#
+# V1.0 Initial Release
+#
+# V1.1
+#
+# Bug fix for username
+# Support for using under Cygwin
+# Support for CatOS
 
 
 # The next line store the args in memory \
@@ -32,11 +43,9 @@ if { $argv == "" } {
 set logger 0
 set logfile ""
 
-if { [catch {load /usr/lib/libtclx8.3.so.1} ] } {
-		set maxfork 0
-} else {
-		set maxfork 4
-}
+set maxfork 4
+
+#load /usr/lib/libtclx8.4.so.1
 
 # Argument processing
 
@@ -44,7 +53,7 @@ while {[llength $argv] > 0 } {
 	set flag [lindex $argv 0]
 	switch -re -- $flag {
 		"--help|-h"		{
-				send_user "ioscmd v1.0 written by Alain Degreffe <eczema@ecze.com>\n\n"
+				send_user "ioscmd v1.1 written by Alain Degreffe <eczema@ecze.com>\n\n"
 				send_user "Usage: ioscmd \[OPTION\]...\n"
 				send_user "Send command(s) to cisco host.\n\n" 
 				send_user " -h --help display this help message.\n"
@@ -137,6 +146,14 @@ while {[llength $argv] > 0 } {
 	}
 }
 
+# Not needed anymore under new expect linked with tcl 8.4
+if { ![ regexp {CYGWIN} [array get tcl_platform os]  ] } {
+      if { [catch {load /usr/lib/libtclx8.3.so.1} ] } {
+              if { [catch {load /usr/lib/libtclx8.4.so.1} ] } {
+                      	set maxfork 0
+              }
+      }
+}
 
 # Procedure varcheck
 #
@@ -184,7 +201,7 @@ proc waitprompt {} {
 			if { $nl > 20 } { send "" ; set nl 0 }
                         exp_continue
 		}
-		-re ">\*$|#\*$|assword: \*$|sername: \*$" {
+		-re "enable\\) \*$|>\*$|#\*$|assword: \*$|sername: \*$" {
 			if   { [ info exist logfd  ] && $logger == 1 } {
 				regsub -all -- "" $expect_out(buffer) "" add
                                 puts -nonewline $logfd  "$beg$add"
@@ -205,7 +222,10 @@ if { [ info exist target ] } {
 } elseif { [ info exist targetfile ] } {
 	set tffd [ open $targetfile "r" ]
 	while { [ set nexthost [ gets $tffd ] ]  != "" } {
-		lappend hostlist $nexthost
+		regsub -all -- " .*|#.*" $nexthost "" nexthost
+		if { $nexthost != "" } {
+			lappend hostlist $nexthost
+		}
 	}
 	
 } else { varcheck hostlist 0 }
@@ -221,7 +241,7 @@ if { [ llength $hostlist ] < 2  ||  $maxfork < 2   } {
 	set childavail $maxfork
 	foreach host $hostlist {
 		flush stdout
-		set child [ fork ]
+		set child [ exp_fork ]
 		if { $child == 0 } { 
 			# Child 
 			set hostlist $host
@@ -230,19 +250,34 @@ if { [ llength $hostlist ] < 2  ||  $maxfork < 2   } {
 			# Oops ressource problem
 		} else { 
 			# Parent part.
+			lappend children $child
+                        regsub -all -- "  *" [ concat $children ] "\ \\|\ " look
 			set childavail [ expr $childavail - 1 ]
-			if { $childavail == 0 } {
-				wait
+			while { $childavail == 0 } {
+				if { [ regexp {CYGWIN} [array get tcl_platform os]  ] } {
+					if [ catch { set pslist [ exec ps -s | grep "\ $look" | wc -l  ] } ] { set pslist 0 }
+					set childavail [ expr $maxfork - $pslist  ]
+					sleep 1
+				} else {
+				tclx_wait 
 				set childavail [ expr $childavail + 1 ]
+				}
 			}
 		}
 	} 
-	if { $child > 0 } { 
-		while { $childavail < $maxfork } {
-			wait 
-			set childavail [ expr $childavail + 1 ]
+	if { $child > 0 } {
+		while { $childavail < $maxfork } { 
+			regsub -all -- "  *" [ concat $children ] "\ \\|\ " look
+			if { [ regexp {CYGWIN} [array get tcl_platform os]  ] } {
+				if [ catch { set pslist [ exec ps -s |  grep "\ $look" | wc -l ] } ] {  set pslist 0 }
+				set childavail [ expr $maxfork - $pslist  ]
+				sleep 1
+			} else {
+				tclx_wait
+				set childavail [ expr $childavail + 1 ]
+			}
+			exit
 		}
-		exit
 	} 
 }
 
@@ -275,7 +310,10 @@ foreach host $hostlist {
 
 
 	expect -re  "(assword)|(sername)"
-	set loginbuf "$expect_out(1,string)"
+        if { [ catch { set loginbuf "$expect_out(1,string)" } ] } {
+               set loginbuf "$expect_out(2,string)" 
+	}
+
 	switch -- $loginbuf {
         	"sername"          {
                 	        varcheck "username" 0
@@ -380,8 +418,9 @@ foreach host $hostlist {
 		}
 	}
 	
-	if { $FORK == 1 } {
-		# Needed for a bug in Tclx 8.4
+	#Not needed under new Expect tcl 8.4
+	 if { $FORK == 1 && ![ regexp {CYGWIN} [array get tcl_platform os]  ] } {
+	# Needed for a bug in Tclx 8.4
 		execl true
 	}
 }
