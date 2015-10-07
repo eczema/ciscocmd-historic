@@ -47,6 +47,9 @@
 # V1.7
 # Hugly hack for cygwin ( defunc ) 
 
+# V1.8
+# New option to use ENV VARS to set user password and secret
+
 # The next line store the args in memory \
 IFS='µ' ; export ARGS=$@
 # the next line restarts using expect \
@@ -61,7 +64,7 @@ regsub -all -- "{|}" [lrange [array get env ARGS] 1 end] "" argv
 regsub -all -- "µ" $argv "\" \"" argv
 regsub -all -- "^|$" $argv "\"" argv
 
-if { $argv == "" } {
+if { $argv == "" || $argv == "\""} {
 	set argv "-h"
 }
 
@@ -86,7 +89,7 @@ while {[llength $argv] > 0 } {
 	set flag [lindex $argv 0]
 	switch -re -- $flag {
 		"--help|^-h$"		{
-				send_user "ciscocmd v1.4 written by Alain Degreffe <eczema@ecze.com>\n\n"
+				send_user "ciscocmd v1.8 written by Alain Degreffe <eczema@ecze.com>\n\n"
 				send_user "Usage: ciscocmd \[OPTION\]...\n"
 				send_user "Send command(s) to cisco host.\n\n" 
 				send_user " -h --help display this help message.\n"
@@ -97,6 +100,7 @@ while {[llength $argv] > 0 } {
 				send_user " -T --targetfile <file>				define a target file (one host per line)\n"
 				send_user " -c --cmd <cmd>					define the command to send.\n"
 				send_user " -e --enable					set mode enable.\n"
+				send_user " -C --cachecred					use cache credentials \$CISCOUSR \$CISCOPW \$CISCOSEC\n"
 				send_user " -r --runfile <file>				define a file with a set of command to send.\n"
 				send_user " -l --log <file prefix>				define a logfile prefix\n"
 				send_user " -a --append					log will be appended to existing file\n" 
@@ -105,9 +109,9 @@ while {[llength $argv] > 0 } {
 				send_user " -w --wait <seconds>				define max wait time for the next prompt\n"
 				send_user " -b --batchfile <file>				define a batch file to process ciscocmd output\n"
 				send_user "						All ciscocmd output will be piped to this batch\n"
-				send_user " -Y|--ssh					Use ssh protocol to connect remote equipement\n"
-                                send_user " --sshopts                                   set ssh specific option\n"
-                                send_user " -f --force                                  force connection to next host if one connection fails\n"
+				send_user " -Y --ssh					Use ssh protocol to connect remote equipement\n"
+                                send_user " --sshopts					set ssh specific option\n"
+                                send_user " -f --force					force connection to next host if one connection fails\n"
 				send_user " -d --debug <file>				define a debug file name\n"
 				send_user " -q --quiet					set program very quiet\n\n"
 				set argv [lrange $argv 1 end]
@@ -137,6 +141,13 @@ while {[llength $argv] > 0 } {
 		"--cmd|-c"		{
                                 set command [lindex $argv 1]
                                 set argv [lrange $argv 2 end]
+				}
+		"--cachecred|-C"
+					{
+				catch { set username $::env(CISCOUSR) }
+				catch { set password $::env(CISCOPW) }
+				catch { set secretpassword  $::env(CISCOSEC) }
+				set argv [lrange $argv 1 end]
 				}
 		"--runfile|-r"		{
                                 set cmdfile [lindex $argv 1]

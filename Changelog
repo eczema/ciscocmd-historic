@@ -1,3 +1,7 @@
+# V1.8
+- Fix empty argument list bug
+- Add -C option for env vars using. 
+
 # V1.7
 -Hugly hack for cygwin defunc
 

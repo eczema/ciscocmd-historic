@@ -1,4 +1,4 @@
-.TH "ciscocmd" "1" "1.6" "Alain Degreffe" "Cisco expect Tool script"
+.TH "ciscocmd" "1" "1.8" "Alain Degreffe" "Cisco expect Tool script"
 .SH "NAME"
 .LP 
 ciscocmd cisco command processing and reporting tool
@@ -60,6 +60,9 @@ ex: \-c "show version"
 .TP 
 \fB\-e \-\-enable\fR                                    
 This flag turn enable mode on. If you use \-s, this parameter is implicit. If \-s is not provided, enable secret will be prompted. 
+.TP
+\fB\-C \-\-cachecred\fR
+This flag will use environment variables CISCOUSR as user, CISCOPW as password and CISCOCEC as secret.
 .TP 
 \fB\-r \-\-runfile\fR <\fIfile\fR
 This option specify a file containing a set of command to enter on your target
@@ -187,6 +190,7 @@ while read line
 		\-c "sh run int $IF"
           fi
      )
+.br
 done
 
 \-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-
@@ -201,6 +205,7 @@ you will have a hundred of text file ( one per node with the result of "sh run i
 Remarks:
 
 1. This example supposes you don't use authentication new model. If you use it do not forget to use \-u <username> with ciscocmd
+.br
 2. Another way to do the same thing is to use "include" command from ios and make a shorter mybatch script.
 
 

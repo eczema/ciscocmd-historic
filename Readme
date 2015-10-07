@@ -19,6 +19,7 @@ ciscoscmd [OPTION]...
  -t --target <host>				define the hostname to connect.
  -T --targetfile <file>				define a target file (one host per line)
  -c --cmd <cmd>					define the command to send.
+ -C --cachecred                                 use cache credentials $CISCOUSR $CISCOPW $CISCOSEC
  -e --enable					set mode enable.
  -r --runfile <file>				define a file with a set of command to send.
  -l --log <file prefix>				define a logfile prefix
@@ -56,6 +57,9 @@ ciscoscmd [OPTION]...
 	
 -c --cmd		With this flag, you can pass the ios command to execute. Don't forget to use quote !!!
 			ex: -c "show version"
+
+-C --cachecred
+			This flag will use environment variables CISCOUSR as user, CISCOPW as password and CISCOCEC as secret.
 
 -e --enable		This flag turn enable mode on. If you use -s, this parameter is useless.
 
