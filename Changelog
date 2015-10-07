@@ -1,3 +1,8 @@
+# Version 1.3
+
+- Add -Y --ssh for ssh support
+- Add pix support bugfix ( expect #<space>$  instead of #$ ) 
+
 # Version 1.2
 
 - Add -w --wait sitch to define timeout
